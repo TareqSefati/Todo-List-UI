@@ -6,6 +6,7 @@ export default function App() {
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [editingItem, setEditingItem] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -15,27 +16,28 @@ export default function App() {
 
   // Fetch all items
   const fetchItems = async () => {
+    setLoading(true); //show spinner
     try {
       const response = await fetch(`${API_BASE_URL}/api/items`);
       const data = await response.json();
       setItems(data);
     } catch (error) {
       setMessage('Failed to load items.');
+    } finally {
+      setLoading(false); //hide spinner
     }
   };
 
-  // Add new item with limit check
+  // Add new item
   const addItem = async () => {
     if (!name.trim()) return;
-
-    // ✅ LIMIT CHECK: allow max 10 items
     if (items.length >= 10) {
       alert('⚠️ You cannot add more than 10 items. Please delete some items.');
       return;
     }
 
     const item = { name };
-
+    setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/items`, {
         method: 'POST',
@@ -52,11 +54,14 @@ export default function App() {
       }
     } catch (error) {
       setMessage('Error while adding item.');
+    } finally {
+      setLoading(false);
     }
   };
 
   // Delete item
   const deleteItem = async (id) => {
+    setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
         method: 'DELETE',
@@ -70,6 +75,8 @@ export default function App() {
       }
     } catch (error) {
       setMessage('Error while deleting item.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,7 +98,7 @@ export default function App() {
     if (!editingItem || !name.trim()) return;
 
     const updatedItem = { ...editingItem, name };
-
+    setLoading(true);
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/items/${editingItem.id}`,
@@ -112,6 +119,8 @@ export default function App() {
       }
     } catch (error) {
       setMessage('Error while updating item.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -119,52 +128,61 @@ export default function App() {
     <div className="App">
       <h1>📝 Item List</h1>
 
-      <div className="input-section">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Item Name"
-        />
+      {/* 🔄 Loading overlay spinner */}
+      {loading && (
+        <div className="loading-overlay">
+          <div className="spinner"></div>
+          <p>Loading...</p>
+        </div>
+      )}
 
-        {editingItem ? (
-          <>
-            <button className="update-btn" onClick={updateItem}>
-              Update
+      <div className={`content ${loading ? 'blurred' : ''}`}>
+        <div className="input-section">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Item Name"
+          />
+
+          {editingItem ? (
+            <>
+              <button className="update-btn" onClick={updateItem}>
+                Update
+              </button>
+              <button className="cancel-btn" onClick={cancelEdit}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button className="add-btn" onClick={addItem}>
+              Add Item
             </button>
-            <button className="cancel-btn" onClick={cancelEdit}>
-              Cancel
-            </button>
-          </>
-        ) : (
-          <button className="add-btn" onClick={addItem}>
-            Add Item
-          </button>
-        )}
+          )}
+        </div>
+
+        {message && <p className="message">{message}</p>}
+
+        <ul className="item-list">
+          {items.map((item) => (
+            <li key={item.id} className="item-row">
+              <span>{item.name}</span>
+              <div className="item-actions">
+                <button className="edit-btn" onClick={() => startEdit(item)}>
+                  ✏️ Edit
+                </button>
+                <button className="delete-btn" onClick={() => deleteItem(item.id)}>
+                  ❌ Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <p className="item-count">
+          Total items: {items.length} / 10
+        </p>
       </div>
-
-      {message && <p className="message">{message}</p>}
-
-      <ul className="item-list">
-        {items.map((item) => (
-          <li key={item.id} className="item-row">
-            <span>{item.name}</span>
-            <div className="item-actions">
-              <button className="edit-btn" onClick={() => startEdit(item)}>
-                ✏️ Edit
-              </button>
-              <button className="delete-btn" onClick={() => deleteItem(item.id)}>
-                ❌ Delete
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* Show item count */}
-      <p className="item-count">
-        Total items: {items.length} / 10
-      </p>
     </div>
   );
 }
